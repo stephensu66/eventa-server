@@ -3,7 +3,7 @@ import { createActivity, getActivityList } from '../controllers/activityControll
 
 const eventsRouter = Router();
 
-eventsRouter.post('/event/create', createActivity);
-eventsRouter.get('/event/list', getActivityList);
+eventsRouter.post('/create', createActivity);
+eventsRouter.get('/list', getActivityList);
 
 export default eventsRouter;

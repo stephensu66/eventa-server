@@ -1,8 +1,9 @@
 import { Router } from 'express';
-import { createActivity, getActivityList } from '../controllers/activityController';
+import { createUser, login } from '../controllers/userController';
 
 const usersRouter = Router();
 
-usersRouter.post('/users/create', createUser);
+usersRouter.post('/register', createUser);
+usersRouter.post('/login', login);
 
 export default usersRouter;
