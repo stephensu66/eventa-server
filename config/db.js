@@ -17,4 +17,5 @@ db.connect((err) => {
   }
 });
 
+export const query = db.query.bind(db);
 export default db;

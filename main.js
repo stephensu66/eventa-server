@@ -1,14 +1,17 @@
 import express from 'express';
 import cors from 'cors';
 import { json } from 'body-parser';
-import activityRoutes from './routes/activityRoutes';
+
+import eventsRouter from './routes/eventRoutes';
+import usersRouter from './routes/userRoutes';
 
 const app = express();
 app.use(cors());
 app.use(json());
 
 // 挂载路由
-app.use('/api/activity', activityRoutes);
+app.use('/api/activity', eventsRouter);
+app.use('/api/users', usersRouter);
 
 // 测试接口
 app.get('/', (req, res) => {
