@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import { createActivity, getActivityList } from '../controllers/activityController';
 
-const router = Router();
+const eventsRouter = Router();
 
-router.post('/create', createActivity);
-router.get('/list', getActivityList);
+eventsRouter.post('/event/create', createActivity);
+eventsRouter.get('/event/list', getActivityList);
 
-export default router;
+export default eventsRouter;
