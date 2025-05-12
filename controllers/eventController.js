@@ -1,4 +1,4 @@
-import { query } from '../config/db';
+import { query } from '../config/db.js';
 
 // 发布活动
 export function createActivity(req, res) {

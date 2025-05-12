@@ -1,13 +1,12 @@
 import express from 'express';
 import cors from 'cors';
-import { json } from 'body-parser';
 
-import eventsRouter from './routes/eventRoutes';
-import usersRouter from './routes/userRoutes';
+import eventsRouter from './routes/eventRoutes.js';
+import usersRouter from './routes/userRoutes.js';
 
 const app = express();
 app.use(cors());
-app.use(json());
+app.use(express.json());
 
 // 挂载路由
 app.use('/api/activity', eventsRouter);
