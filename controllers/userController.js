@@ -1,4 +1,4 @@
-import { query } from '../config/db';
+import { query } from '../config/db.js';
 
 export const createUser = async(req, res)  => {
   const { username, email, password } = req.body;

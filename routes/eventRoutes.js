@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createActivity, getActivityList } from '../controllers/activityController';
+import { createActivity, getActivityList } from '../controllers/eventController.js';
 
 const eventsRouter = Router();
 
