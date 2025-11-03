@@ -10,7 +10,7 @@ app.use(express.json());
 
 // 挂载路由
 app.use('/api/activity', eventsRouter);
-app.use('/api/users', usersRouter);
+app.use('/api/user', usersRouter);
 
 // 测试接口
 app.get('/', (req, res) => {
@@ -18,6 +18,6 @@ app.get('/', (req, res) => {
 });
 
 // 启动服务器
-app.listen(3000, () => {
-  console.log('Server runs at http://localhost:3000');
+app.listen(3300, '0.0.0.0', () => {
+  console.log('Server runs at http://0.0.0.0:3300');
 });
