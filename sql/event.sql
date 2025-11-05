@@ -1,12 +1,11 @@
-# 1. events 主表
-
+/* 1. events main table */
 CREATE TABLE events (
   event_id BIGINT AUTO_INCREMENT PRIMARY KEY,
-  event_status ENUM('ACTIVE', 'CANCELLED', 'DELETED') DEFAULT 'ACTIVE' NOT NULL;
+  event_status TINYINT UNSIGNED NOT NULL DEFAULT 1 COMMENT '0: draft, 1:pending, 2:rejected, 3:active, 4:cancelled, 5:completed, 6:deleted, 7:suspended, 8: full',
   event_title VARCHAR(255) NOT NULL,
-  event_description TEXT,
+  event_description LONGTEXT DEFAULT NULL,
   is_free BOOLEAN DEFAULT TRUE,
-  is_online BOOLEAN DEFAULT FAlSE,
+  is_online BOOLEAN DEFAULT FALSE,
   is_onsite BOOLEAN DEFAULT FALSE,
   longitude DECIMAL(10,6),
   latitude DECIMAL(10,6),
@@ -14,59 +13,74 @@ CREATE TABLE events (
   link VARCHAR(512),
   start_time DATETIME NOT NULL,
   end_time DATETIME NOT NULL,
-  max_participate_num INT NOT NULL,
-  host_id VARCHAR(255) NOT NULL,  -- 可用于存储用户名或访客 ID， 主办方
+  max_participate_num INT DEFAULT NULL COMMENT 'null means no limitation for participated people',
+  host_id BIGINT NOT NULL COMMENT 'host user id',
   created_time DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-  updated_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL
-  event_type TINYINT NOT NULL DEFAULT 1 COMMENT '1:event, 2:skill, 3:task'; 
+  updated_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL,
+  event_type TINYINT UNSIGNED NOT NULL DEFAULT 1 COMMENT '1:event, 2:skill, 3:task',
   
-  FOREIGN KEY (host_id) REFERENCES users(id) ON DELETE CASCADE
-);
+  FOREIGN KEY (host_id) REFERENCES users(id) ON DELETE CASCADE,
 
-# 2 event_contacts
+  INDEX idx_event_status (event_status),
+  INDEX idx_event_type (event_type),
+  INDEX idx_host_id (host_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+/* 2 event_contacts */
 
 CREATE TABLE event_contacts (
   id BIGINT AUTO_INCREMENT PRIMARY KEY,
   
   event_id BIGINT NOT NULL,
-  contact_type ENUM('wechat', 'email', 'call', 'others') NOT NULL,
+  contact_type VARCHAR(50) NOT NULL COMMENT 'type: wechat, email, call, others',
   contact_value VARCHAR(255) NOT NULL,
   is_active BOOLEAN DEFAULT TRUE,
 
-  FOREIGN KEY (event_id) REFERENCES events(event_id) ON DELETE CASCADE
-);
+  created_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
-# 3. event_images
+  FOREIGN KEY (event_id) REFERENCES events(event_id) ON DELETE CASCADE,
+
+  UNIQUE KEY uniq_event_contact (event_id, contact_type),
+  INDEX idx_event_id (event_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+/* 3. event_images */
 
 CREATE TABLE event_images (
   id BIGINT AUTO_INCREMENT PRIMARY KEY,
   event_id BIGINT NOT NULL,
   image_url VARCHAR(1024) NOT NULL,
-  file_type ENUM('image','video') DEFAULT 'image',
-  sort_order INT DEFAULT 0,
+  file_type VARCHAR(50) NOT NULL DEFAULT 'image' COMMENT 'type: image, video',
+  sort_order INT UNSIGNED DEFAULT 0,
   is_active BOOLEAN DEFAULT TRUE,
-  uploaded_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  
+  uploaded_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (event_id) REFERENCES events(event_id) ON DELETE CASCADE,
-  INDEX idx_event_id (event_id) 
-);
+  INDEX idx_event_id (event_id),
+  INDEX idx_event_sort (event_id, sort_order)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-# 4. event_participants
+/* 4. event_participants */
 
 CREATE TABLE event_participants (
   id BIGINT AUTO_INCREMENT PRIMARY KEY,
   event_id BIGINT NOT NULL,
   user_id BIGINT NOT NULL,
   joined_time DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-  status ENUM('joined', 'cancelled') DEFAULT 'joined',  -- 参加状态，可扩展
-  role ENUM('participant', 'cohost') DEFAULT 'participant', -- 角色，可扩展
+  status VARCHAR(50) NOT NULL DEFAULT 'joined' COMMENT 'type: joined, cancelled',
+  role VARCHAR(50) NOT NULL DEFAULT 'participant' COMMENT 'roles: participant, cohost',
 
   FOREIGN KEY (event_id) REFERENCES events(event_id) ON DELETE CASCADE,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
 
-  UNIQUE KEY unique_participation (event_id, user_id)
-);
+  UNIQUE KEY unique_participation (event_id, user_id),
+  INDEX idx_user_id (user_id),
+  INDEX idx_event_status (event_id, status)
+)ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-# 5. event_favorites
+/*  5. event_favorites */
 
 CREATE TABLE event_favorites (
   id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -77,27 +91,23 @@ CREATE TABLE event_favorites (
   FOREIGN KEY (event_id) REFERENCES events(event_id) ON DELETE CASCADE,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
 
-  UNIQUE KEY unique_favorite (event_id, user_id)
-);
+  UNIQUE KEY unique_favorite (event_id, user_id),
+  INDEX idx_user_fav (user_id, favorited_time)
+)ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-# 6. notifications
+/*  6. notifications */ 
 
 CREATE TABLE notifications (
   id BIGINT AUTO_INCREMENT PRIMARY KEY,
-  user_id BIGINT NOT NULL,            -- 接收消息的用户
-  event_id BIGINT,                    -- 相关活动（有的消息可能不关联活动，可以为 NULL）
-  type ENUM(
-    'EVENT_SIGNUP_SUCCESS',           -- 报名成功
-    'EVENT_SIGNUP_CANCEL',            -- 报名取消
-    'EVENT_CANCELLED',                -- 活动被取消
-    'EVENT_UPDATED',                  -- 活动时间或内容更新
-    'CUSTOM'                          -- 自定义通知（比如系统公告）
-  ) NOT NULL,
-  message TEXT NOT NULL,              -- 通知内容
-  is_read BOOLEAN DEFAULT FALSE,      -- 是否已读
+  user_id BIGINT NOT NULL COMMENT 'users who receive message',
+  event_id BIGINT DEFAULT NULL,
+  type VARCHAR(50) NOT NULL DEFAULT 'custom' COMMENT 'types: event_signup_success, event_signup_cancel, event_cancelled, event_update, custom',
+  message TEXT NOT NULL,
+  is_read BOOLEAN DEFAULT FALSE,
   created_time DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 
-
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-  FOREIGN KEY (event_id) REFERENCES events(event_id) ON DELETE CASCADE
-);
+  FOREIGN KEY (event_id) REFERENCES events(event_id) ON DELETE CASCADE,
+  INDEX idx_user_read_time (user_id, is_read, created_time),
+  INDEX idx_event_id (event_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
