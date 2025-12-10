@@ -1,11 +1,12 @@
 import { createConnection } from 'mysql2';
+import { DB_DATABASE, DB_HOST, DB_PASSWORD, DB_PORT, DB_USER } from '../constants';
 
 const db = createConnection({
-  host: 'db4free.net',
-  port: 3306,
-  user: 'taroevent',
-  database: 'taroevent',
-  password: '00544201',
+  host: DB_HOST,
+  port: DB_PORT,
+  user: DB_USER,
+  database: DB_DATABASE,
+  password: DB_PASSWORD,
   
 });
 
