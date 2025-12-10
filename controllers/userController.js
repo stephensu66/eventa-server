@@ -66,7 +66,7 @@ export const joinEvent = async (req, res) => {
     if (rows.length === 0) {
       await db.query(
         `INSERT INTO event_participants (event_id, user_id, status) 
-         VALUES (?, ?, 'joined')`,
+        VALUES (?, ?, 'joined')`,
         [event_id, userId]
       );
       return res.json({ message: '报名成功', status: 'joined' });
@@ -76,8 +76,8 @@ export const joinEvent = async (req, res) => {
     if (participant.status === 'cancelled') {
       await db.query(
         `UPDATE event_participants 
-         SET status = 'joined', joined_time = CURRENT_TIMESTAMP 
-         WHERE event_id = ? AND user_id = ?`,
+        SET status = 'joined', joined_time = CURRENT_TIMESTAMP 
+        WHERE event_id = ? AND user_id = ?`,
         [event_id, userId]
       );
       return res.json({ message: '重新报名成功', status: 'joined' });

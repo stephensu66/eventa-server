@@ -1,5 +1,5 @@
 import COS from 'cos-nodejs-sdk-v5';
-import { COS_SECRET_ID, COS_SECRET_KEY } from '../constants';
+import { COS_SECRET_ID, COS_SECRET_KEY } from '../constants/index.js';
 
 const cos = new COS({
   SecretId: COS_SECRET_ID,

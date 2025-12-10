@@ -1,5 +1,5 @@
 import { createConnection } from 'mysql2';
-import { DB_DATABASE, DB_HOST, DB_PASSWORD, DB_PORT, DB_USER } from '../constants';
+import { DB_DATABASE, DB_HOST, DB_PASSWORD, DB_PORT, DB_USER } from '../constants/index.js';
 
 const db = createConnection({
   host: DB_HOST,
