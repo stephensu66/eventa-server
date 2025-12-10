@@ -65,3 +65,28 @@ CREATE TABLE user_check_status (
   INDEX idx_updated_time (updated_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+INSERT INTO user_types (type_name, is_paid, is_invited)
+VALUES
+  ('free',          0, 0),
+  ('free_invited',  0, 1),
+  ('free_ngo',      0, 0),
+  ('paid_personal', 1, 0),
+  ('paid_company',  1, 0)
+ON DUPLICATE KEY UPDATE
+  is_paid = VALUES(is_paid),
+  is_invited = VALUES(is_invited);
+
+INSERT INTO user_publish_rules (user_type_id, max_events_per_month, max_images_per_event, max_videos_per_event)
+SELECT id, 2,   1, 1 FROM user_types WHERE type_name = 'free'
+UNION ALL
+SELECT id, 30,   10, 3 FROM user_types WHERE type_name = 'free_invited'
+UNION ALL
+SELECT id, 30,  10, 3 FROM user_types WHERE type_name = 'free_ngo'
+UNION ALL
+SELECT id, 10,  10, 3 FROM user_types WHERE type_name = 'paid_personal'
+UNION ALL
+SELECT id, 30, 20, 3 FROM user_types WHERE type_name = 'paid_company'
+ON DUPLICATE KEY UPDATE
+  max_events_per_month = VALUES(max_events_per_month),
+  max_images_per_event = VALUES(max_images_per_event),
+  max_videos_per_event = VALUES(max_videos_per_event);
