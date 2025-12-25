@@ -53,7 +53,7 @@ export function getActivityList(req, res) {
   try {
     query('SELECT * FROM events', (err, results) => {
     if (err) {
-      return res.status(500).send({ message: 'error in database' });
+      res.status(500).send({ message: 'error is in database' });
     }
 
     const normalizedResults = normalizeTypeFields(results, ['is_online', 'is_free', 'is_onsite', 'event_type', 'is_paid', 'is_favorited']);
