@@ -50,7 +50,8 @@ export function createActivity(req, res) {
 
 // 获取活动列表
 export function getActivityList(req, res) {
-  query('SELECT * FROM events', (err, results) => {
+  try {
+    query('SELECT * FROM events', (err, results) => {
     if (err) {
       return res.status(500).send({ message: 'error in database' });
     }
@@ -59,6 +60,14 @@ export function getActivityList(req, res) {
 
     res.status(200).send(normalizedResults);
   });
+  } catch (error) {
+    console.error('[getActivityList][UNEXPECTED ERROR]', err);
+    res.status(500).send({
+      message: 'unexpected server error',
+      error: err.message
+    });
+  }
+  
 }
 
 // Get event detail by event_id
