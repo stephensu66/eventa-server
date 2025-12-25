@@ -53,7 +53,8 @@ export function getActivityList(req, res) {
   try {
     query('SELECT * FROM events', (err, results) => {
     if (err) {
-      res.status(500).send({ message: 'error is in database' });
+      console.error('[getActivityList][DB ERROR]', err);
+      return res.status(500).send({ message: 'error is in database' });
     }
 
     const normalizedResults = normalizeTypeFields(results, ['is_online', 'is_free', 'is_onsite', 'event_type', 'is_paid', 'is_favorited']);
@@ -61,7 +62,7 @@ export function getActivityList(req, res) {
     res.status(200).send(normalizedResults);
   });
   } catch (error) {
-    console.error('[getActivityList][UNEXPECTED ERROR]', err);
+    console.error('[getActivityList][UNEXPECTED ERROR]', error);
     res.status(500).send({
       message: 'unexpected server error',
       error: err.message
