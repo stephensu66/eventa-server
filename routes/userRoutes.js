@@ -4,7 +4,7 @@ import authMiddleware from '../middleware/index.js';
 
 const usersRouter = Router();
 
-usersRouter.post('/register', createUser);
+usersRouter.get('/register', createUser);
 usersRouter.post('/join', authMiddleware, joinEvent);
 usersRouter.post('/check', checkUser);
 usersRouter.get('/status', authMiddleware, getUserStats);

@@ -56,6 +56,7 @@ export const createUser = async(req, res)  => {
   // const hashedPassword = await bcrypt.hash(password, saltRounds);
 }
 
+// 暂时未用到
 export const checkUser = async(req, res) => {
   const { username, password } = req.body;
 
