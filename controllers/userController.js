@@ -21,11 +21,10 @@ export const createUser = async(req, res)  => {
   );
 
   const { openid } = wxRes.data;
+  console.log(1221, wxRes, openid);
   if (!openid) {
   return res.status(400).send({
-    message: 'WeChat login failed',
-    errcode,
-    errmsg
+    message: 'WeChat login failed'
   });
 }
   console.log(13, newUserInfo, openid)
