@@ -1,27 +1,59 @@
 import db, { query } from '../config/db.js';
-import { JWT_SECRET } from '../constants/index.js';
+import { APPID, APPSECRET, JWT_SECRET } from '../constants/index.js';
 import jwt from 'jsonwebtoken';
+import { createUserByOpenId, getUserByOpenId } from '../services/index.js';
 
 export const createUser = async(req, res)  => {
-  const { username, email, password } = req.body;
+  const { code, newUserInfo } = req.body;
 
-  if (!username || !email || !password) {
-    return res.status(400).send({ message: 'Missing required fields' });
-  }
-  const saltRounds = 10;
-  const hashedPassword = await bcrypt.hash(password, saltRounds);
-
-  const sql = 'INSERT INTO users (username, email, password) VALUES (?, ?, ?)';
-  const values = [username, email, hashedPassword];
-
-  query(sql, values, (err, result) => {
-    if (err) {
-      console.error(err);
-      return res.status(500).send({ message: 'Database error while creating user' });
+  // 1. 用 code 换 openid
+  const wxRes = await axios.get(
+    `https://api.weixin.qq.com/sns/jscode2session`,
+    {
+      params: {
+        appid: APPID,
+        secret: APPSECRET,
+        js_code: code,
+        grant_type: 'authorization_code'
+      }
     }
+  );
 
-    res.send({ message: 'User created successfully', userId: result.insertId });
+  const { openid } = wxRes.data;
+  if (!openid) {
+  return res.status(400).send({
+    message: 'WeChat login failed',
+    errcode,
+    errmsg
   });
+}
+  console.log(13, newUserInfo, openid)
+
+  // 2. 查用户
+  const user = await getUserByOpenId(openid);
+
+  let userId;
+  if (!user) {
+    // 3. 不存在就创建
+    userId = await createUserByOpenId(openid, newUserInfo);
+  } else {
+    userId = user.id;
+  }
+
+  // 4. 生成 token
+  const token = jwt.sign({ userId }, JWT_SECRET, {
+    expiresIn: '7d'
+  });
+
+  res.send({ token });
+
+  
+
+  // if (!username || !email || !password) {
+  //   return res.status(400).send({ message: 'Missing required fields' });
+  // }
+  // const saltRounds = 10;
+  // const hashedPassword = await bcrypt.hash(password, saltRounds);
 }
 
 export const checkUser = async(req, res) => {
