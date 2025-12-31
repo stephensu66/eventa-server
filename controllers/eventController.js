@@ -52,15 +52,15 @@ export function createActivity(req, res) {
 export function getActivityList(req, res) {
   try {
     query('SELECT * FROM events', (err, results) => {
-    if (err) {
-      console.error('[getActivityList][DB ERROR]', err);
-      return res.status(500).send({ message: 'error is in database' });
-    }
+      if (err) {
+        console.error('[getActivityList][DB ERROR]', err);
+        return res.status(500).send({ message: 'error is in database' });
+      }
+      console.log(23, results)
+      const normalizedResults = normalizeTypeFields(results, ['is_online', 'is_free', 'is_onsite', 'event_type', 'is_paid', 'is_favorited']);
 
-    const normalizedResults = normalizeTypeFields(results, ['is_online', 'is_free', 'is_onsite', 'event_type', 'is_paid', 'is_favorited']);
-
-    res.status(200).send(normalizedResults);
-  });
+      res.status(200).send(normalizedResults);
+    });
   } catch (error) {
     console.error('[getActivityList][UNEXPECTED ERROR]', error);
     res.status(500).send({
