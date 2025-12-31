@@ -5,7 +5,7 @@ import axios from 'axios';
 import { createUserByOpenId, getUserByOpenId } from '../services/index.js';
 
 export const createUser = async(req, res)  => {
-  const { code, newUserInfo } = req.body;
+  const { code, newUserInfo } = req.body.data;
 
   // 1. 用 code 换 openid
   const wxRes = await axios.get(
