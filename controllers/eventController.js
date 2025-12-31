@@ -3,8 +3,8 @@ import { normalizeTypeFields } from './utils.js';
 
 // 发布活动
 export function createActivity(req, res) {
-  console.log(12, req)
-  const host_id = req.user.user_id;
+  console.log(12, req.user)
+  const host_id = req.user.useId;
   const { event_type, event_image_urls, event_title, event_description, is_free, is_online, is_onsite, longitude, latitude, full_address, link, start_time, end_time, max_participate_num  } = req.body;
   const sql = 'INSERT INTO events ( event_type, event_title, event_description, is_free, is_online, is_onsite, longitude, latitude, full_address, link, start_time, end_time, max_participate_num, host_id ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
   const values = [
