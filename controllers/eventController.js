@@ -3,9 +3,10 @@ import { normalizeTypeFields } from './utils.js';
 
 // 发布活动
 export function createActivity(req, res) {
+  console.log(12, req)
   const host_id = req.user.user_id;
   const { event_type, event_image_urls, event_title, event_description, is_free, is_online, is_onsite, longitude, latitude, full_address, link, start_time, end_time, max_participate_num  } = req.body;
-  const sql = 'INSERT INTO events ( event_type, event_title, event_description, is_free, is_online, is_onsite, longitude, latitude, full_address, link, start_time, end_time, max_participate_num, host_id ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+  const sql = 'INSERT INTO events ( event_type, event_title, event_description, is_free, is_online, is_onsite, longitude, latitude, full_address, link, start_time, end_time, max_participate_num, host_id ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
   const values = [
     event_type,
     event_title,
@@ -25,13 +26,14 @@ export function createActivity(req, res) {
 
   query(sql, values, (err, result) => {
     if (err) {
+      console.error(err);
       return res.status(500).send({ message: 'error in database' });
     }
 
     if (!event_image_urls || !Array.isArray(event_image_urls) || event_image_urls.length === 0) {
-      return res.send({ message: 'event created successfully', id: eventId });
+      return res.send({ message: 'event created successfully' });
     }
-
+    console.log(45, result)
     // Upload images to event_images database
     const eventId = result.insertId;
     const imageValues = event_image_urls.map((url, index) => [eventId, url, 'image', index]);
@@ -68,7 +70,6 @@ export function getActivityList(req, res) {
       error: err.message
     });
   }
-  
 }
 
 // Get event detail by event_id
