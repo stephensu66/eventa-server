@@ -1,4 +1,4 @@
-import { query } from "../config/db";
+import { query } from "../config/db.js";
 
 export const getUserByOpenId = async (openid) => {
   if (!openid) {
