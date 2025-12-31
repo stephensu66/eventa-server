@@ -1,6 +1,7 @@
 import db, { query } from '../config/db.js';
 import { APPID, APPSECRET, JWT_SECRET } from '../constants/index.js';
 import jwt from 'jsonwebtoken';
+import axios from 'axios';
 import { createUserByOpenId, getUserByOpenId } from '../services/index.js';
 
 export const createUser = async(req, res)  => {
