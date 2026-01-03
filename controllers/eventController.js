@@ -1,6 +1,8 @@
 import { query } from '../config/db.js';
 import { normalizeTypeFields } from './utils.js';
 
+const typeFields = ['is_online', 'is_free', 'is_onsite', 'event_type', 'is_paid', 'is_favorited'];
+
 // 发布活动
 export function createActivity(req, res) {
   console.log(12, req.user)
@@ -102,9 +104,110 @@ export function getActivityDetail(req, res) {
         }))
     };
 
-    const normalizedResults = normalizeTypeFields(eventRes, ['is_online', 'is_free', 'is_onsite', 'event_type', 'is_paid', 'is_favorited']);
+    const normalizedResults = normalizeTypeFields(eventRes, typeFields);
     res.status(200).send(normalizedResults);
   });
+}
+
+function getPublishedActivities(userId, res) {
+  const sql = `
+    SELECT 
+      e.*,
+      (
+        SELECT image_url
+        FROM event_images
+        WHERE event_id = e.event_id
+          AND is_active = 1
+        ORDER BY sort_order ASC
+        LIMIT 1
+      ) AS cover_image
+    FROM events e
+    WHERE e.host_id = ?
+    ORDER BY e.start_time DESC
+  `;
+
+  query(sql, [userId], (err, results) => {
+    if (err) {
+      console.error('[published][DB ERROR]', err);
+      return res.status(500).send({ message: 'database error' });
+    }
+
+    res.send(normalizeTypeFields(results, typeFields));
+  });
+}
+
+function getJoinedActivities(userId, res) {
+  const sql = `
+    SELECT 
+      e.*,
+      (
+        SELECT image_url
+        FROM event_images
+        WHERE event_id = e.event_id
+          AND is_active = 1
+        ORDER BY sort_order ASC
+        LIMIT 1
+      ) AS cover_image
+    FROM event_participants p
+    JOIN events e ON p.event_id = e.event_id
+    WHERE p.user_id = ?
+    ORDER BY e.start_time DESC
+  `;
+
+  query(sql, [userId], (err, results) => {
+    if (err) {
+      console.error('[joined][DB ERROR]', err);
+      return res.status(500).send({ message: 'database error' });
+    }
+
+    res.send(normalizeTypeFields(results, typeFields));
+  });
+}
+
+function getSavedActivities(userId, res) {
+  const sql = `
+    SELECT 
+      e.*,
+      (
+        SELECT image_url
+        FROM event_images
+        WHERE event_id = e.event_id
+          AND is_active = 1
+        ORDER BY sort_order ASC
+        LIMIT 1
+      ) AS cover_image
+    FROM event_favorites f
+    JOIN events e ON p.event_id = e.event_id
+    WHERE p.user_id = ?
+    ORDER BY e.start_time DESC
+  `;
+
+  query(sql, [userId], (err, results) => {
+    if (err) {
+      console.error('[saved][DB ERROR]', err);
+      return res.status(500).send({ message: 'database error' });
+    }
+
+    res.send(normalizeTypeFields(results, typeFields));
+  });
+}
+
+
+export function getActivityListByUserStatus(req, res) {
+  const userId = req.user.user_id;
+  const { status } = req.query;
+  console.log(2, status)
+
+  switch (status) {
+    case 'published':
+      return getPublishedActivities(userId, res);
+    case 'joined':
+      return getJoinedActivities(userId, res);
+    case 'saved':
+      return getSavedActivities(userId, res);
+    default:
+      return res.status(400).send({ message: 'invalid status' });
+  }
 }
 
 // Mark event as deleted

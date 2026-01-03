@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createActivity, getActivityList, getActivityDetail, updateActivityDetail, updateImages } from '../controllers/eventController.js';
+import { createActivity, getActivityList, getActivityDetail, updateActivityDetail, updateImages, getActivityListByUserStatus } from '../controllers/eventController.js';
 import authMiddleware from '../middleware/index.js';
 import { getCOSstsMiddleware } from '../middleware/cosMiddleware.js';
 
@@ -9,6 +9,7 @@ eventsRouter.post('/create', authMiddleware, createActivity);
 eventsRouter.get('/list', getActivityList);
 eventsRouter.get('/detail', authMiddleware, getActivityDetail);
 eventsRouter.put('/update', authMiddleware, updateActivityDetail);
+eventsRouter.get('/user', authMiddleware, getActivityListByUserStatus);
 
 eventsRouter.post('/cos-signature', getCOSstsMiddleware, (res, req) => {
   res.json(req.cosSts)
