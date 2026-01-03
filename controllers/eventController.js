@@ -54,8 +54,32 @@ export function createActivity(req, res) {
 
 // 获取活动列表
 export function getActivityList(req, res) {
+  const userId = req.user?.user_id;
+  console.log(3456, userId)
+
+  const sql = userId
+    ? `
+      SELECT
+        e.*,
+        IF(f.id IS NULL, 0, 1) AS is_favorited
+      FROM events e
+      LEFT JOIN event_favorites f
+        ON f.event_id = e.event_id
+        AND f.user_id = ?
+      ORDER BY e.start_time DESC
+    `
+    : `
+      SELECT
+        e.*,
+        0 AS is_favorited
+      FROM events e
+      ORDER BY e.start_time DESC
+    `;
+
+  const params = userId ? [userId] : [];
+  
   try {
-    query('SELECT * FROM events', (err, results) => {
+    query(sql, params, (err, results) => {
       if (err) {
         console.error('[getActivityList][DB ERROR]', err);
         return res.status(500).send({ message: 'error is in database' });
