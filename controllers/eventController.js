@@ -101,19 +101,38 @@ export function getActivityList(req, res) {
 // Get event detail by event_id
 export function getActivityDetail(req, res) {
   const { event_id } = req.query;
+  const userId = req.user?.user_id;
 
-  const sql = `
-    SELECT 
-      e.*,
-      i.id AS image_id,
-      i.image_url
-    FROM events e
-    LEFT JOIN event_images i
-      ON e.event_id = i.event_id AND i.is_active = 1
-    WHERE e.event_id = ?
-  `;
+  const sql = userId
+    ? `
+      SELECT
+        e.*,
+        i.id AS image_id,
+        i.image_url,
+        IF(f.id IS NULL, 0, 1) AS is_favorited
+      FROM events e
+      LEFT JOIN event_images i
+        ON e.event_id = i.event_id AND i.is_active = 1
+      LEFT JOIN event_favorites f
+        ON f.event_id = e.event_id
+       AND f.user_id = ?
+      WHERE e.event_id = ?
+    `
+    : `
+      SELECT
+        e.*,
+        i.id AS image_id,
+        i.image_url,
+        0 AS is_favorited
+      FROM events e
+      LEFT JOIN event_images i
+        ON e.event_id = i.event_id AND i.is_active = 1
+      WHERE e.event_id = ?
+    `;
 
-  query(sql, [event_id], (err, results) => {
+  const params = userId ? [userId, event_id] : [event_id];
+
+  query(sql, params, (err, results) => {
     if (err) {
       return res.status(500).send({ message: 'error in database' });
     }
