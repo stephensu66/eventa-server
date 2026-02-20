@@ -4,7 +4,7 @@ import { normalizeTypeFields } from './utils.js';
 const typeFields = ['is_online', 'is_free', 'is_onsite', 'event_type', 'is_paid', 'is_favorited'];
 
 // 发布活动
-export function createActivity(req, res) {
+export async function createActivity(req, res) {
   console.log(12, req.user)
   const host_id = req.user.userId;
   const { event_type, event_image_urls, event_title, event_description, is_free, is_online, is_onsite, longitude, latitude, full_address, link, start_time, end_time, max_participate_num  } = req.body;
@@ -26,34 +26,28 @@ export function createActivity(req, res) {
     host_id
   ];
 
-  query(sql, values, (err, result) => {
-    if (err) {
-      console.error(err);
-      return res.status(500).send({ message: 'error in database' });
-    }
-
+  try {
+    const [result] = await query(sql, values);
     if (!event_image_urls || !Array.isArray(event_image_urls) || event_image_urls.length === 0) {
       return res.send({ message: 'event created successfully' });
     }
+
     console.log(45, result)
     // Upload images to event_images database
     const eventId = result.insertId;
     const imageValues = event_image_urls.map((url, index) => [eventId, url, 'image', index]);
     const imageSql = `INSERT INTO event_images (event_id, image_url, file_type, sort_order) VALUES ?`;
 
-    query(imageSql, [imageValues], (err2) => {
-      if (err2) {
-        console.error('Insert event_images error:', err2);
-        return res.status(500).send({ message: 'event created, but image insert failed' });
-      }
-
-      res.send({ message: 'event created successfully', id: eventId });
-    });
-  });
+    await query(imageSql, [imageValues]);
+    res.send({ message: 'event created successfully', id: eventId });
+  } catch (err) {
+    console.error('[createActivity][DB ERROR]', err);
+    res.status(500).send({ message: 'error in database' });
+  }
 }
 
 // 获取活动列表
-export function getActivityList(req, res) {
+export async function getActivityList(req, res) {
   const userId = req.user?.user_id;
   console.log(3456, userId)
 
@@ -79,27 +73,21 @@ export function getActivityList(req, res) {
   const params = userId ? [userId] : [];
   
   try {
-    query(sql, params, (err, results) => {
-      if (err) {
-        console.error('[getActivityList][DB ERROR]', err);
-        return res.status(500).send({ message: 'error is in database' });
-      }
-      console.log(23, results)
-      const normalizedResults = normalizeTypeFields(results, ['is_online', 'is_free', 'is_onsite', 'event_type', 'is_paid', 'is_favorited']);
-
-      res.status(200).send(normalizedResults);
-    });
+    const [results] = await query(sql, params);
+    console.log(23, results)
+    const normalizedResults = normalizeTypeFields(results, ['is_online', 'is_free', 'is_onsite', 'event_type', 'is_paid', 'is_favorited']);
+    res.status(200).send(normalizedResults);
   } catch (error) {
-    console.error('[getActivityList][UNEXPECTED ERROR]', error);
+    console.error('[getActivityList][DB ERROR]', error);
     res.status(500).send({
-      message: 'unexpected server error',
-      error: err.message
+      message: 'error is in database',
+      error: error.message
     });
   }
 }
 
 // Get event detail by event_id
-export function getActivityDetail(req, res) {
+export async function getActivityDetail(req, res) {
   const { event_id } = req.query;
   const userId = req.user?.user_id;
 
@@ -132,11 +120,8 @@ export function getActivityDetail(req, res) {
 
   const params = userId ? [userId, event_id] : [event_id];
 
-  query(sql, params, (err, results) => {
-    if (err) {
-      return res.status(500).send({ message: 'error in database' });
-    }
-
+  try {
+    const [results] = await query(sql, params);
     const eventRes = {
       ...results[0],
       images: results
@@ -149,10 +134,12 @@ export function getActivityDetail(req, res) {
 
     const normalizedResults = normalizeTypeFields(eventRes, typeFields);
     res.status(200).send(normalizedResults);
-  });
+  } catch (err) {
+    res.status(500).send({ message: 'error in database' });
+  }
 }
 
-function getPublishedActivities(userId, res) {
+async function getPublishedActivities(userId, res) {
   const sql = `
     SELECT 
       e.*,
@@ -169,17 +156,16 @@ function getPublishedActivities(userId, res) {
     ORDER BY e.start_time DESC
   `;
 
-  query(sql, [userId], (err, results) => {
-    if (err) {
-      console.error('[published][DB ERROR]', err);
-      return res.status(500).send({ message: 'database error' });
-    }
-
+  try {
+    const [results] = await query(sql, [userId]);
     res.send(normalizeTypeFields(results, typeFields));
-  });
+  } catch (err) {
+    console.error('[published][DB ERROR]', err);
+    return res.status(500).send({ message: 'database error' });
+  }
 }
 
-function getJoinedActivities(userId, res) {
+async function getJoinedActivities(userId, res) {
   const sql = `
     SELECT 
       e.*,
@@ -197,17 +183,16 @@ function getJoinedActivities(userId, res) {
     ORDER BY e.start_time DESC
   `;
 
-  query(sql, [userId], (err, results) => {
-    if (err) {
-      console.error('[joined][DB ERROR]', err);
-      return res.status(500).send({ message: 'database error' });
-    }
-
+  try {
+    const [results] = await query(sql, [userId]);
     res.send(normalizeTypeFields(results, typeFields));
-  });
+  } catch (err) {
+    console.error('[joined][DB ERROR]', err);
+    return res.status(500).send({ message: 'database error' });
+  }
 }
 
-function getSavedActivities(userId, res) {
+async function getSavedActivities(userId, res) {
   const sql = `
     SELECT 
       e.*,
@@ -220,119 +205,107 @@ function getSavedActivities(userId, res) {
         LIMIT 1
       ) AS cover_image
     FROM event_favorites f
-    JOIN events e ON p.event_id = e.event_id
-    WHERE p.user_id = ?
+    JOIN events e ON f.event_id = e.event_id
+    WHERE f.user_id = ?
     ORDER BY e.start_time DESC
   `;
 
-  query(sql, [userId], (err, results) => {
-    if (err) {
-      console.error('[saved][DB ERROR]', err);
-      return res.status(500).send({ message: 'database error' });
-    }
-
+  try {
+    const [results] = await query(sql, [userId]);
     res.send(normalizeTypeFields(results, typeFields));
-  });
+  } catch (err) {
+    console.error('[saved][DB ERROR]', err);
+    return res.status(500).send({ message: 'database error' });
+  }
 }
 
 
-export function getActivityListByUserStatus(req, res) {
+export async function getActivityListByUserStatus(req, res) {
   const userId = req.user.user_id;
   const { status } = req.query;
   console.log(2, status)
 
   switch (status) {
     case 'published':
-      return getPublishedActivities(userId, res);
+      return await getPublishedActivities(userId, res);
     case 'joined':
-      return getJoinedActivities(userId, res);
+      return await getJoinedActivities(userId, res);
     case 'saved':
-      return getSavedActivities(userId, res);
+      return await getSavedActivities(userId, res);
     default:
       return res.status(400).send({ message: 'invalid status' });
   }
 }
 
 // Mark event as deleted
-export function updateActivityDetail(req, res) {
+export async function updateActivityDetail(req, res) {
   const { event_id, order } = req.body;
 
-  let sql;
+  try {
+    if (order === 'update') {
+      const { event_id, event_image_urls: updateImageUrls = [], event_type, event_title, event_description,
+        is_free, is_online, is_onsite, link,
+        start_time, end_time, max_participate_num, host_id } = req.body;
 
-  if (order === 'update') {
-    const { event_id, event_image_urls: updateImageUrls, event_type, event_title, event_description,
-      is_free, is_online, is_onsite, link,
-      start_time, end_time, max_participate_num, host_id } = req.body;
+      const updateSql = `
+        UPDATE events
+        SET event_type=?, event_title=?, event_description=?, is_free=?,
+            is_online=?, is_onsite=?, link=?, start_time=?, end_time=?,
+            max_participate_num=?, host_id=?, updated_time=NOW()
+        WHERE event_id=?
+      `;
 
-    sql = `
-      UPDATE events
-      SET event_type=?, event_title=?, event_description=?, is_free=?,
-          is_online=?, is_onsite=?, link=?, start_time=?, end_time=?,
-          max_participate_num=?, host_id=?, updated_time=NOW()
-      WHERE event_id=?
-    `;
+      const values = [
+        event_type, event_title, event_description, is_free,
+        is_online, is_onsite, link, start_time, end_time,
+        max_participate_num, host_id, event_id
+      ];
 
-    const values = [
-      event_type, event_title, event_description, is_free,
-      is_online, is_onsite, link, start_time, end_time,
-      max_participate_num, host_id, event_id
-    ];
-
-    // 1. update event info except image urls
-    query(sql, values, (err, results) => {
-      if (err) {
-        return res.status(500).send({ message: 'error in database' });
-      }
+      // 1. update event info except image urls
+      await query(updateSql, values);
 
       // 2. make old image url as inactive as deleted status
       const deleteImageSql = `
-        UPDATED event_images 
+        UPDATE event_images 
         SET is_active = FALSE
         WHERE event_id = ?`;
-  
-      query(deleteImageSql, [event_id], (err) => {
-        if (err) return res.status(500).send({ message: 'failed to mark images inactive' });
-        // 3. update new image url into database
-        if (updateImageUrls.length > 0) {
-          const insertSql = `
-            INSERT INTO event_images (event_id, image_url, file_type, sort_order)
-            VALUES ?
-          `;
-          const values = updateImageUrls.map((url, index) => [event_id, url, 'image', index]);
+      await query(deleteImageSql, [event_id]);
 
-          query(insertSql, [values], (errIns) => {
-            if (errIns) return res.status(500).send({ message: 'failed to insert new images' });
-            res.status(200).send('event and images updated successfully');
-          });
-        } else {
-          res.status(200).send('event and images updated successfully');
-        }
-      })
-    });
-  }
+      // 3. update new image url into database
+      if (updateImageUrls.length > 0) {
+        const insertSql = `
+          INSERT INTO event_images (event_id, image_url, file_type, sort_order)
+          VALUES ?
+        `;
+        const imageValues = updateImageUrls.map((url, index) => [event_id, url, 'image', index]);
+        await query(insertSql, [imageValues]);
+      }
 
-  if (order === 'delete') {
-    sql = `
-      UPDATE events
-      SET status = 'deleted'
-      WHERE event_id = ?
-    `;
-  } else if (order === 'cancel') {
-    sql = `
-      UPDATE events
-      SET status = 'cancelled'
-      WHERE event_id = ?
-    `;
-  } else 
-
-
-  query(sql, [event_id], (err, results) => {
-    if (err) {
-      return res.status(500).send({ message: 'error in database' });
+      return res.status(200).send('event and images updated successfully');
     }
 
-    res.status(200).send('event updated successfully');
-  });
+    let sql;
+    if (order === 'delete') {
+      sql = `
+        UPDATE events
+        SET status = 'deleted'
+        WHERE event_id = ?
+      `;
+    } else if (order === 'cancel') {
+      sql = `
+        UPDATE events
+        SET status = 'cancelled'
+        WHERE event_id = ?
+      `;
+    } else {
+      return res.status(400).send({ message: 'invalid order' });
+    }
+
+    await query(sql, [event_id]);
+    return res.status(200).send('event updated successfully');
+  } catch (err) {
+    return res.status(500).send({ message: 'error in database' });
+  }
 }
 
 export const updateImages = (req, res) => {

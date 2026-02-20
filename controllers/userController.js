@@ -2,6 +2,7 @@ import db, { query } from '../config/db.js';
 import { APPID, APPSECRET, JWT_SECRET } from '../constants/index.js';
 import jwt from 'jsonwebtoken';
 import axios from 'axios';
+import bcrypt from 'bcrypt';
 import { createUserByOpenId, getUserByOpenId } from '../services/index.js';
 
 export const createUser = async(req, res)  => {
@@ -62,7 +63,8 @@ export const checkUser = async(req, res) => {
 
   try {
     const sql = 'SELECT * FROM users WHERE username = ?';
-    const [user] = await query(sql, [username]);
+    const [users] = await query(sql, [username]);
+    const user = users[0];
 
     if (!user) {
       return res.status(400).send({ message: '用户名不存在' });
@@ -136,7 +138,7 @@ export const getUserStats = async (req, res) => {
   let userId;
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    userId = decoded.user_id;
+    userId = decoded.userId;
   } catch (err) {
     return res.status(401).send({ message: 'token 无效或已过期' });
   }
@@ -145,28 +147,28 @@ export const getUserStats = async (req, res) => {
     const stats = {};
 
     // 已发布活动数
-    const [published] = await db.promise().query(
+    const [published] = await db.query(
       'SELECT COUNT(*) as count FROM events WHERE host_id = ?',
       [userId]
     );
     stats.submitted_events_count = published[0].count;
 
     // 已参与活动数
-    const [joined] = await db.promise().query(
+    const [joined] = await db.query(
       'SELECT COUNT(*) as count FROM event_participants WHERE user_id = ?',
       [userId]
     );
     stats.joined_events_count = joined[0].count;
 
     // 收藏活动数
-    const [saved] = await db.promise().query(
+    const [saved] = await db.query(
       'SELECT COUNT(*) as count FROM event_favorites WHERE user_id = ?',
       [userId]
     );
     stats.saved_events_count = saved[0].count;
 
     // 未读通知数
-    const [notifications] = await db.promise().query(
+    const [notifications] = await db.query(
       'SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND is_read = 0',
       [userId]
     );

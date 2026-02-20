@@ -11,7 +11,7 @@ eventsRouter.get('/detail', authMiddleware, getActivityDetail);
 eventsRouter.put('/update', authMiddleware, updateActivityDetail);
 eventsRouter.get('/user', authMiddleware, getActivityListByUserStatus);
 
-eventsRouter.post('/cos-signature', getCOSstsMiddleware, (res, req) => {
+eventsRouter.post('/cos-signature', getCOSstsMiddleware, (req, res) => {
   res.json(req.cosSts)
 });
 
