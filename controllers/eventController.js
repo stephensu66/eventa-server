@@ -48,7 +48,7 @@ export async function createActivity(req, res) {
 
 // 获取活动列表
 export async function getActivityList(req, res) {
-  const userId = req.user?.user_id;
+  const userId = req.user?.userId;
   console.log(3456, userId)
 
   const sql = userId
@@ -89,7 +89,7 @@ export async function getActivityList(req, res) {
 // Get event detail by event_id
 export async function getActivityDetail(req, res) {
   const { event_id } = req.query;
-  const userId = req.user?.user_id;
+  const userId = req.user?.userId;
 
   const sql = userId
     ? `
@@ -221,7 +221,7 @@ async function getSavedActivities(userId, res) {
 
 
 export async function getActivityListByUserStatus(req, res) {
-  const userId = req.user.user_id;
+  const userId = req.user.userId;
   const { status } = req.query;
   console.log(2, status)
 

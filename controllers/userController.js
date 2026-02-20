@@ -191,3 +191,42 @@ export const uploadUserInfo = async (req, res) => {
 
   res.json({ message: 'Update user info successfully' });
 };
+
+export const getUserNotifications = async (req, res) => {
+  try {
+    const { userId } = req.user;
+    const [rows] = await db.query(
+      `SELECT id, event_id, type, message, is_read, created_time
+       FROM notifications
+       WHERE user_id = ?
+       ORDER BY created_time DESC
+       LIMIT 100`,
+      [userId]
+    );
+
+    res.json({ message: '获取成功', data: rows });
+  } catch (err) {
+    console.error('获取消息通知失败:', err);
+    res.status(500).json({ message: '获取消息通知失败' });
+  }
+};
+
+export const markNotificationAsRead = async (req, res) => {
+  try {
+    const { userId } = req.user;
+    const { id } = req.body;
+
+    if (!id) {
+      return res.status(400).json({ message: '缺少通知 id' });
+    }
+
+    await db.query(
+      'UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?',
+      [id, userId]
+    );
+    return res.json({ message: '更新成功' });
+  } catch (err) {
+    console.error('更新通知状态失败:', err);
+    return res.status(500).json({ message: '更新通知状态失败' });
+  }
+};
