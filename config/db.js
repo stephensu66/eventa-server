@@ -1,7 +1,7 @@
-import { createConnection } from 'mysql2';
+import mysql from 'mysql2';
 import { DB_DATABASE, DB_HOST, DB_PASSWORD, DB_PORT, DB_USER } from '../constants/index.js';
 
-const db = createConnection({
+const db = mysql.createPool({
   host: DB_HOST,
   port: DB_PORT,
   user: DB_USER,
