@@ -6,47 +6,52 @@ import bcrypt from 'bcrypt';
 import { createUserByOpenId, getUserByOpenId } from '../services/index.js';
 
 export const createUser = async(req, res)  => {
-  const { code, newUserInfo } = req.body.data;
+  try {
+    const { code, newUserInfo } = req.body.data;
 
-  // 1. 用 code 换 openid
-  const wxRes = await axios.get(
-    `https://api.weixin.qq.com/sns/jscode2session`,
-    {
-      params: {
-        appid: APPID,
-        secret: APPSECRET,
-        js_code: code,
-        grant_type: 'authorization_code'
+    // 1. 用 code 换 openid
+    const wxRes = await axios.get(
+      `https://api.weixin.qq.com/sns/jscode2session`,
+      {
+        params: {
+          appid: APPID,
+          secret: APPSECRET,
+          js_code: code,
+          grant_type: 'authorization_code'
+        }
       }
+    );
+
+    const { openid, errcode, errmsg } = wxRes.data;
+    console.log(1221, req.body, wxRes.data, openid);
+    if (!openid) {
+      return res.status(400).send({
+        message: `WeChat login failed: ${errcode || ''} ${errmsg || ''}`.trim()
+      });
     }
-  );
+    console.log(13, newUserInfo, openid)
 
-  const { openid } = wxRes.data;
-  console.log(1221, req.body, wxRes, openid);
-  if (!openid) {
-  return res.status(400).send({
-    message: 'WeChat login failed'
-  });
-}
-  console.log(13, newUserInfo, openid)
+    // 2. 查用户
+    const user = await getUserByOpenId(openid);
 
-  // 2. 查用户
-  const user = await getUserByOpenId(openid);
+    let userId;
+    if (!user) {
+      // 3. 不存在就创建
+      userId = await createUserByOpenId(openid, newUserInfo);
+    } else {
+      userId = user.id;
+    }
 
-  let userId;
-  if (!user) {
-    // 3. 不存在就创建
-    userId = await createUserByOpenId(openid, newUserInfo);
-  } else {
-    userId = user.id;
+    // 4. 生成 token
+    const token = jwt.sign({ userId }, JWT_SECRET, {
+      expiresIn: '7d'
+    });
+
+    res.send({ token });
+  } catch (error) {
+    console.error('createUser error:', error?.response?.data || error);
+    res.status(500).send({ message: 'Server error in register' });
   }
-
-  // 4. 生成 token
-  const token = jwt.sign({ userId }, JWT_SECRET, {
-    expiresIn: '7d'
-  });
-
-  res.send({ token });
 
   
 

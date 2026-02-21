@@ -89,6 +89,7 @@ export async function getActivityList(req, res) {
 // Get event detail by event_id
 export async function getActivityDetail(req, res) {
   const { event_id } = req.query;
+  console.log(122, req.user, event_id);
   const userId = req.user?.userId;
 
   const sql = userId
@@ -122,6 +123,7 @@ export async function getActivityDetail(req, res) {
 
   try {
     const [results] = await query(sql, params);
+    console.log(125, results);
     const eventRes = {
       ...results[0],
       images: results
@@ -135,6 +137,7 @@ export async function getActivityDetail(req, res) {
     const normalizedResults = normalizeTypeFields(eventRes, typeFields);
     res.status(200).send(normalizedResults);
   } catch (err) {
+    console.error(err)
     res.status(500).send({ message: 'error in database' });
   }
 }
