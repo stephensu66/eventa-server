@@ -76,6 +76,19 @@ ON DUPLICATE KEY UPDATE
   is_paid = VALUES(is_paid),
   is_invited = VALUES(is_invited);
 
+CREATE TABLE user_feedbacks (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  user_id BIGINT NOT NULL,
+  sender_type VARCHAR(20) NOT NULL DEFAULT 'wechat' COMMENT 'wechat, email, phone',
+  sender_contact VARCHAR(255) NOT NULL,
+  content TEXT NOT NULL,
+  created_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_feedback_user_time (user_id, created_time),
+  INDEX idx_feedback_created_time (created_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 INSERT INTO user_publish_rules (user_type_id, max_events_per_month, max_images_per_event, max_videos_per_event)
 SELECT id, 2,   1, 1 FROM user_types WHERE type_name = 'free'
 UNION ALL

@@ -5,6 +5,35 @@ import axios from 'axios';
 import bcrypt from 'bcrypt';
 import { createUserByOpenId, getUserByOpenId } from '../services/index.js';
 
+const formatEventTime = (time) => {
+  if (!time) return '';
+  const d = new Date(time);
+  if (Number.isNaN(d.getTime())) return String(time);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+
+const createNotification = async ({ userId, eventId = null, type, message }) => {
+  if (!userId || !message) return;
+  await db.query(
+    'INSERT INTO notifications (user_id, event_id, type, message) VALUES (?, ?, ?, ?)',
+    [userId, eventId, type || 'custom', message]
+  );
+};
+
+const getEventMeta = async (eventId) => {
+  const [rows] = await db.query(
+    'SELECT event_id, event_title, start_time, host_id FROM events WHERE event_id = ? LIMIT 1',
+    [eventId]
+  );
+  return rows[0] || null;
+};
+
+const getUserNickname = async (userId) => {
+  const [rows] = await db.query('SELECT nickname FROM users WHERE id = ? LIMIT 1', [userId]);
+  return rows[0]?.nickname || `用户${userId}`;
+};
+
 export const createUser = async(req, res)  => {
   try {
     const { code, newUserInfo } = req.body.data;
@@ -98,6 +127,12 @@ export const joinEvent = async (req, res) => {
       return res.status(400).json({ message: '缺少参数 event_id 或 userId' });
     }
 
+    const eventMeta = await getEventMeta(event_id);
+    if (!eventMeta) {
+      return res.status(404).json({ message: '活动不存在' });
+    }
+    const actorName = await getUserNickname(userId);
+
     const [rows] = await db.query(
       'SELECT * FROM event_participants WHERE event_id = ? AND user_id = ?',
       [event_id, userId]
@@ -109,6 +144,20 @@ export const joinEvent = async (req, res) => {
         VALUES (?, ?, 'joined')`,
         [event_id, userId]
       );
+      await createNotification({
+        userId,
+        eventId: event_id,
+        type: 'event_signup_success',
+        message: `已报名《${eventMeta.event_title}》，活动开始时间：${formatEventTime(eventMeta.start_time)}`
+      });
+      if (eventMeta.host_id && Number(eventMeta.host_id) !== Number(userId)) {
+        await createNotification({
+          userId: eventMeta.host_id,
+          eventId: event_id,
+          type: 'event_signup_success',
+          message: `${actorName} 报名了你发布的活动《${eventMeta.event_title}》`
+        });
+      }
       return res.json({ message: '报名成功', status: 'joined' });
     }
 
@@ -120,6 +169,20 @@ export const joinEvent = async (req, res) => {
         WHERE event_id = ? AND user_id = ?`,
         [event_id, userId]
       );
+      await createNotification({
+        userId,
+        eventId: event_id,
+        type: 'event_signup_success',
+        message: `已重新报名《${eventMeta.event_title}》，活动开始时间：${formatEventTime(eventMeta.start_time)}`
+      });
+      if (eventMeta.host_id && Number(eventMeta.host_id) !== Number(userId)) {
+        await createNotification({
+          userId: eventMeta.host_id,
+          eventId: event_id,
+          type: 'event_signup_success',
+          message: `${actorName} 重新报名了你发布的活动《${eventMeta.event_title}》`
+        });
+      }
       return res.json({ message: '重新报名成功', status: 'joined' });
     }
 
@@ -130,6 +193,59 @@ export const joinEvent = async (req, res) => {
   } catch (error) {
     console.error('joinEvent error:', error);
     res.status(500).json({ message: '服务器错误' });
+  }
+};
+
+export const cancelJoinEvent = async (req, res) => {
+  try {
+    const { event_id } = req.body;
+    const { userId } = req.user;
+
+    if (!event_id || !userId) {
+      return res.status(400).json({ message: '缺少参数 event_id 或 userId' });
+    }
+
+    const eventMeta = await getEventMeta(event_id);
+    if (!eventMeta) {
+      return res.status(404).json({ message: '活动不存在' });
+    }
+
+    const [rows] = await db.query(
+      'SELECT * FROM event_participants WHERE event_id = ? AND user_id = ? LIMIT 1',
+      [event_id, userId]
+    );
+
+    if (rows.length === 0 || rows[0].status !== 'joined') {
+      return res.json({ message: '当前未报名该活动', status: 'cancelled' });
+    }
+
+    await db.query(
+      `UPDATE event_participants
+       SET status = 'cancelled'
+       WHERE event_id = ? AND user_id = ?`,
+      [event_id, userId]
+    );
+
+    const actorName = await getUserNickname(userId);
+    await createNotification({
+      userId,
+      eventId: event_id,
+      type: 'event_signup_cancel',
+      message: `你已取消报名《${eventMeta.event_title}》`
+    });
+    if (eventMeta.host_id && Number(eventMeta.host_id) !== Number(userId)) {
+      await createNotification({
+        userId: eventMeta.host_id,
+        eventId: event_id,
+        type: 'event_signup_cancel',
+        message: `${actorName} 取消报名了你发布的活动《${eventMeta.event_title}》`
+      });
+    }
+
+    return res.json({ message: '取消报名成功', status: 'cancelled' });
+  } catch (error) {
+    console.error('cancelJoinEvent error:', error);
+    return res.status(500).json({ message: '服务器错误' });
   }
 };
 
@@ -151,26 +267,43 @@ export const getUserStats = async (req, res) => {
   try {
     const stats = {};
 
-    // 已发布活动数
+    // 发布的活动数
     const [published] = await db.query(
-      'SELECT COUNT(*) as count FROM events WHERE host_id = ?',
+      `SELECT COUNT(*) as count
+       FROM events
+       WHERE host_id = ?
+         AND event_status NOT IN (4, 6)`,
       [userId]
     );
     stats.submitted_events_count = published[0].count;
 
-    // 已参与活动数
+    // 报名的活动数
     const [joined] = await db.query(
-      'SELECT COUNT(*) as count FROM event_participants WHERE user_id = ?',
+      `SELECT COUNT(*) as count
+       FROM event_participants p
+       JOIN events e ON p.event_id = e.event_id
+       WHERE p.user_id = ?
+         AND p.status = 'joined'`,
       [userId]
     );
     stats.joined_events_count = joined[0].count;
 
     // 收藏活动数
     const [saved] = await db.query(
-      'SELECT COUNT(*) as count FROM event_favorites WHERE user_id = ?',
+      `SELECT COUNT(*) as count
+       FROM event_favorites f
+       JOIN events e ON f.event_id = e.event_id
+       WHERE f.user_id = ?`,
       [userId]
     );
     stats.saved_events_count = saved[0].count;
+
+    // 消息总数（和通知列表内容数量一致）
+    const [notificationTotal] = await db.query(
+      'SELECT COUNT(*) as count FROM notifications WHERE user_id = ?',
+      [userId]
+    );
+    stats.notifications_count = notificationTotal[0].count;
 
     // 未读通知数
     const [notifications] = await db.query(
@@ -233,5 +366,39 @@ export const markNotificationAsRead = async (req, res) => {
   } catch (err) {
     console.error('更新通知状态失败:', err);
     return res.status(500).json({ message: '更新通知状态失败' });
+  }
+};
+
+export const submitUserFeedback = async (req, res) => {
+  try {
+    const { userId } = req.user;
+    const { sender_type, sender_contact, content } = req.body || {};
+    const senderContact = String(sender_contact || '').trim();
+    const feedbackContent = String(content || '').trim();
+
+    const inferSenderType = (value) => {
+      if (/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(value)) return 'email';
+      if (/^1\d{10}$/.test(value) || /^\+?\d[\d -]{5,}$/.test(value)) return 'phone';
+      if (/^[a-zA-Z][-_a-zA-Z0-9]{4,}$/.test(value)) return 'wechat';
+      return 'other';
+    };
+    const normalizedSenderType = ['wechat', 'email', 'phone', 'other'].includes(sender_type)
+      ? sender_type
+      : inferSenderType(senderContact);
+
+    if (!senderContact || !feedbackContent) {
+      return res.status(400).json({ message: '请填写发件人和反馈内容' });
+    }
+
+    await db.query(
+      `INSERT INTO user_feedbacks (user_id, sender_type, sender_contact, content)
+       VALUES (?, ?, ?, ?)`,
+      [userId, normalizedSenderType, senderContact, feedbackContent]
+    );
+
+    return res.json({ message: '反馈已提交' });
+  } catch (error) {
+    console.error('submitUserFeedback error:', error);
+    return res.status(500).json({ message: '提交反馈失败' });
   }
 };

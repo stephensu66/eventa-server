@@ -1,4 +1,6 @@
-export const normalizeTypeFields = (result, fields) => {
+export const normalizeTypeFields = (results, fields) => {
+  const result = Array.isArray(results) ? results : [results];
+
   return result.map(item => {
     const newResult = { ...item };
     for (const field of fields) {

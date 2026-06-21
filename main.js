@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
-import { checkDbConnection } from './config/db.js';
+import { APP_HOST, APP_PORT } from './constants/index.js';
+import { waitForDbConnection } from './config/db.js';
 
 import eventsRouter from './routes/eventRoutes.js';
 import usersRouter from './routes/userRoutes.js';
@@ -18,8 +19,12 @@ app.get('/', (req, res) => {
   res.send('Server starts successfully');
 });
 
+app.get('/health', (_req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
+
 // 启动服务器
-await checkDbConnection(); // 先确认数据库可用
-app.listen(3300, '0.0.0.0', () => {
-  console.log('Server runs at http://0.0.0.0:3300');
+await waitForDbConnection();
+app.listen(APP_PORT, APP_HOST, () => {
+  console.log(`Server runs at http://${APP_HOST}:${APP_PORT}`);
 });

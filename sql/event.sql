@@ -26,6 +26,23 @@ CREATE TABLE events (
   INDEX idx_host_id (host_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+/* 7. user_feedbacks */
+
+CREATE TABLE user_feedbacks (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  user_id BIGINT NOT NULL,
+  sender_type VARCHAR(20) NOT NULL DEFAULT 'wechat' COMMENT 'wechat, email',
+  sender_contact VARCHAR(255) NOT NULL,
+  content TEXT NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'pending' COMMENT 'pending, handled',
+  created_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_feedback_user_time (user_id, created_time),
+  INDEX idx_feedback_status_time (status, created_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 /* 2 event_contacts */
 
 CREATE TABLE event_contacts (
@@ -52,6 +69,7 @@ CREATE TABLE event_images (
   event_id BIGINT NOT NULL,
   image_url VARCHAR(1024) NOT NULL,
   file_type VARCHAR(50) NOT NULL DEFAULT 'image' COMMENT 'type: image, video',
+  source_type VARCHAR(20) NOT NULL DEFAULT 'user' COMMENT 'source: user, system',
   sort_order INT UNSIGNED DEFAULT 0,
   is_active BOOLEAN DEFAULT TRUE,
   
