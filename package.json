@@ -5,6 +5,9 @@
   "type": "module",
   "main": "main.js",
   "scripts": {
+    "check:syntax": "sh ./scripts/check-syntax.sh",
+    "check:compose": "docker compose config -q",
+    "ci": "npm run check:syntax && npm run check:compose",
     "start": "node main.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "node --watch main.js"

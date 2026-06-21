@@ -1,0 +1,40 @@
+name: Deploy To Server
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types:
+      - completed
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main') }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: 8.138.205.39
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT || '22' }}
+          script: |
+            set -eu
+
+            if [ -d "$HOME/eventa/eventa-sever" ]; then
+              cd "$HOME/eventa/eventa-sever"
+            elif [ -d "/eventa/eventa-sever" ]; then
+              cd "/eventa/eventa-sever"
+            else
+              echo "Deploy path not found: $HOME/eventa/eventa-sever or /eventa/eventa-sever"
+              exit 1
+            fi
+
+            git fetch --all --prune
+            git checkout main
+            git pull --ff-only origin main
+
+            docker compose up -d --build
+            docker compose ps

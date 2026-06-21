@@ -78,6 +78,36 @@ docker compose down -v
 docker compose up -d --build app
 ```
 
+## CI/CD
+
+项目内置了最小 CI/CD：
+
+- `npm run check:syntax`: 校验全部 `.js` 文件语法
+- `npm run check:compose`: 校验 `docker-compose.yml`
+- `npm run ci`: 本地复用和 GitHub Actions 复用的总检查入口
+
+GitHub Actions 包含两条工作流：
+
+- `.github/workflows/ci.yml`
+  在 `push` 到 `main` 和 `pull_request` 时执行依赖安装、语法检查、Compose 校验、Docker 镜像构建。
+- `.github/workflows/docker-publish.yml`
+  在 `main` 分支推送后，自动将应用镜像发布到 `ghcr.io/<owner>/<repo>`。
+- `.github/workflows/deploy.yml`
+  在 `CI` 成功且分支为 `main` 后，通过 SSH 连接 `8.138.205.39`，进入 `eventa/eventa-sever` 目录执行 `git pull` 和 `docker compose up -d --build`。
+
+部署工作流依赖以下 GitHub Secrets：
+
+- `SERVER_USER`: 云服务器 SSH 用户名
+- `SERVER_SSH_KEY`: 云服务器私钥内容
+- `SERVER_PORT`: SSH 端口，可选，默认 `22`
+
+本地手动执行 CI 检查：
+
+```bash
+npm ci
+npm run ci
+```
+
 ## 数据迁移
 
 导出数据库：
