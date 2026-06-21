@@ -23,12 +23,12 @@ jobs:
           script: |
             set -eu
 
-            if [ -d "$HOME/eventa/eventa-sever" ]; then
-              cd "$HOME/eventa/eventa-sever"
-            elif [ -d "/eventa/eventa-sever" ]; then
-              cd "/eventa/eventa-sever"
+            if [ -d "$HOME/eventa/eventa-server" ]; then
+              cd "$HOME/eventa/eventa-server"
+            elif [ -d "/eventa/eventa-server" ]; then
+              cd "/eventa/eventa-server"
             else
-              echo "Deploy path not found: $HOME/eventa/eventa-sever or /eventa/eventa-sever"
+              echo "Deploy path not found: $HOME/eventa/eventa-server or /eventa/eventa-server"
               exit 1
             fi
 
