@@ -83,7 +83,7 @@ docker compose up -d --build app
 项目内置了最小 CI/CD：
 
 - `npm run check:syntax`: 校验全部 `.js` 文件语法
-- `npm run check:compose`: 校验 `docker-compose.yml`
+- `npm run check:compose`: 使用 `.env.example` 兜底校验 `docker-compose.yml`
 - `npm run ci`: 本地复用和 GitHub Actions 复用的总检查入口
 
 GitHub Actions 包含两条工作流：
